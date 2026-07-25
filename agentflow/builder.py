@@ -12,6 +12,10 @@ from agentflow.nodes.transform import TransformNode
 from agentflow.nodes.supervisor import SupervisorNode
 from agentflow.nodes.gate import GateNode
 from agentflow.nodes.loop import LoopNode
+from agentflow.nodes.foreach import ForEachNode
+from agentflow.nodes.router import RouterNode
+from agentflow.nodes.http import HTTPNode
+from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWriteNode
 from agentflow.execution.executor import WorkflowExecutor
 from agentflow.types import (
     Edge,
@@ -111,6 +115,67 @@ class WorkflowBuilder:
     ) -> WorkflowBuilder:
         self._dag.add_node(NodeSpec(name=name, node_type="loop"))
         self._nodes[name] = LoopNode(name, body_fn, condition_fn, max_iterations)
+        return self
+
+    def foreach(
+        self,
+        name: str,
+        item_fn: Callable[[Any, SharedContext], Any],
+        max_parallel: int = 4,
+        max_items: int = 1000,
+        fail_fast: bool = False,
+        item_timeout: float = 0,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="foreach"))
+        self._nodes[name] = ForEachNode(
+            name, item_fn, max_parallel=max_parallel, max_items=max_items,
+            fail_fast=fail_fast, item_timeout_s=item_timeout,
+        )
+        return self
+
+    def router(
+        self,
+        name: str,
+        routes: dict[str, Callable[[Any, SharedContext], bool]],
+        default_route: str = "",
+        match_all: bool = False,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="router"))
+        self._nodes[name] = RouterNode(name, routes, default_route, match_all)
+        return self
+
+    def http(
+        self,
+        name: str,
+        url: str = "",
+        method: str = "GET",
+        headers: dict[str, str] | None = None,
+        timeout: float = 10.0,
+        parse_json: bool = True,
+        allow_private: bool = False,
+        url_fn: Callable[[dict[str, Any], SharedContext], str] | None = None,
+        retry: int = 0,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="http", retry_count=retry))
+        self._nodes[name] = HTTPNode(
+            name, url=url, method=method, headers=headers, timeout_s=timeout,
+            parse_json=parse_json, allow_private=allow_private, url_fn=url_fn,
+        )
+        return self
+
+    def memory_write(self, name: str, key: str, value_fn: Callable[[dict[str, Any]], Any] | None = None) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="memory_write"))
+        self._nodes[name] = MemoryWriteNode(name, key, value_fn)
+        return self
+
+    def memory_read(self, name: str, key: str, default: Any = None, required: bool = False) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="memory_read"))
+        self._nodes[name] = MemoryReadNode(name, key, default, required)
+        return self
+
+    def memory_append(self, name: str, key: str, max_len: int = 1000) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="memory_append"))
+        self._nodes[name] = MemoryAppendNode(name, key, max_len)
         return self
 
     def node(self, name: str, node: BaseNode, node_type: str = "custom", **spec_kwargs) -> WorkflowBuilder:

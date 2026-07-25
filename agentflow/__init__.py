@@ -17,13 +17,28 @@ from agentflow.graph import DAG
 from agentflow.nodes.aggregator import AggregatorNode
 from agentflow.nodes.base import BaseNode, NodeRegistry
 from agentflow.nodes.conditional import ConditionalNode
+from agentflow.nodes.foreach import ForEachNode
 from agentflow.nodes.gate import GateNode
+from agentflow.nodes.http import HTTPNode, SSRFBlocked, check_url_safety
 from agentflow.nodes.llm import LLMNode
 from agentflow.nodes.loop import LoopNode
+from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWriteNode
+from agentflow.nodes.router import RouterNode
 from agentflow.nodes.subworkflow import SubworkflowNode
 from agentflow.nodes.supervisor import SupervisorNode
 from agentflow.nodes.tool import ToolNode
 from agentflow.nodes.transform import TransformNode
+from agentflow.metrics import Histogram, MetricsCollector
+from agentflow.middleware import (
+    LoggingMiddleware,
+    Middleware,
+    MiddlewareChain,
+    NodeFailure,
+    RedactionMiddleware,
+    TimingMiddleware,
+    ValidationMiddleware,
+)
+from agentflow.streaming import StreamEvent, StreamingExecutor
 from agentflow.patterns import (
     chain_of_thought,
     fan_out_fan_in,
@@ -113,12 +128,16 @@ __all__ = [
     "ExponentialBackoff",
     "ExponentialBackoffWithJitter",
     "fan_out_fan_in",
+    "check_url_safety",
     "find_bottlenecks",
     "find_critical_path",
     "FixedDelay",
+    "ForEachNode",
     "FunctionRegistry",
     "GateNode",
     "guarded_pipeline",
+    "Histogram",
+    "HTTPNode",
     "impact_analysis",
     "LinearBackoff",
     "LLMNode",
@@ -126,11 +145,19 @@ __all__ = [
     "load_result",
     "load_spec_json",
     "load_spec_yaml",
+    "LoggingMiddleware",
     "LoopNode",
     "map_reduce",
+    "MemoryAppendNode",
+    "MemoryReadNode",
+    "MemoryWriteNode",
     "merge_workflows",
     "MessageBox",
+    "MetricsCollector",
+    "Middleware",
+    "MiddlewareChain",
     "NodeCache",
+    "NodeFailure",
     "NodeOutput",
     "NodeRegistry",
     "NodeResult",
@@ -139,22 +166,29 @@ __all__ = [
     "parallel_workflows",
     "pipeline",
     "RateLimiter",
+    "RedactionMiddleware",
     "RetryStrategy",
+    "RouterNode",
     "save_context",
     "save_result",
     "serialize_context",
     "serialize_result",
     "SharedContext",
     "spec_from_builder",
+    "SSRFBlocked",
+    "StreamEvent",
+    "StreamingExecutor",
     "SubworkflowNode",
     "supervisor_loop",
     "SupervisorNode",
+    "TimingMiddleware",
     "to_ascii",
     "to_dot",
     "to_mermaid",
     "to_summary",
     "ToolNode",
     "TransformNode",
+    "ValidationMiddleware",
     "validate_spec",
     "voting_ensemble",
     "WorkflowBuilder",
