@@ -4,6 +4,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from typing import Any
 
+from agentflow.cache import NodeCache, compute_cache_key
 from agentflow.graph import DAG
 from agentflow.nodes.base import BaseNode
 from agentflow.types import (
@@ -26,13 +27,22 @@ class WorkflowExecutor:
         nodes: dict[str, BaseNode] | None = None,
         config: WorkflowConfig | None = None,
         hooks: WorkflowHooks | None = None,
+        cache: NodeCache | None = None,
     ):
         self._dag = dag
         self._nodes = nodes or {}
         self._config = config or WorkflowConfig()
         self._hooks = hooks or WorkflowHooks()
+        self._cache = cache
 
-    def run(self, context: SharedContext | None = None) -> WorkflowResult:
+    def resume(self, context: SharedContext) -> WorkflowResult:
+        completed = {
+            name for name, nr in context.results.items()
+            if nr.status == NodeStatus.COMPLETED
+        }
+        return self.run(context, skip_nodes=completed)
+
+    def run(self, context: SharedContext | None = None, skip_nodes: set[str] | None = None) -> WorkflowResult:
         errors = self._dag.validate()
         if errors:
             return WorkflowResult(
@@ -49,10 +59,16 @@ class WorkflowExecutor:
 
         schedule = self._dag.parallel_schedule()
         status_map: dict[str, NodeStatus] = {n: NodeStatus.PENDING for n in self._dag.nodes}
+        skip_nodes = skip_nodes or set()
+
+        for name in skip_nodes:
+            if name in status_map:
+                status_map[name] = NodeStatus.COMPLETED
 
         for level in schedule:
-            runnable = [n for n in level if self._should_run(n, status_map, context)]
-            skipped = [n for n in level if n not in runnable]
+            pending = [n for n in level if n not in skip_nodes]
+            runnable = [n for n in pending if self._should_run(n, status_map, context)]
+            skipped = [n for n in pending if n not in runnable]
 
             for node_name in skipped:
                 status_map[node_name] = NodeStatus.SKIPPED
@@ -129,6 +145,22 @@ class WorkflowExecutor:
 
         inputs = self._gather_inputs(node_name, context)
 
+        cache_key = ""
+        if self._cache is not None:
+            cache_key = compute_cache_key(node_name, inputs)
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                result = NodeResult(
+                    node_name=node_name,
+                    status=NodeStatus.COMPLETED,
+                    output=cached,
+                    attempts=0,
+                    elapsed_ms=0,
+                )
+                if self._hooks.on_node_complete:
+                    self._hooks.on_node_complete(node_name, result, context)
+                return result
+
         last_error = ""
         for attempt in range(max_retries + 1):
             start = time.perf_counter()
@@ -143,6 +175,8 @@ class WorkflowExecutor:
                 elapsed = (time.perf_counter() - start) * 1000
 
                 if output.success:
+                    if self._cache is not None and cache_key:
+                        self._cache.put(cache_key, output)
                     result = NodeResult(
                         node_name=node_name,
                         status=NodeStatus.COMPLETED,

@@ -10,5 +10,11 @@ requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = []
 
+[project.optional-dependencies]
+yaml = ["pyyaml>=6.0"]
+
+[project.scripts]
+agentflow = "agentflow.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["agentflow*"]

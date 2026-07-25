@@ -8,6 +8,7 @@ from agentflow.analysis import (
     impact_analysis,
 )
 from agentflow.builder import WorkflowBuilder
+from agentflow.cache import NodeCache, compute_cache_key
 from agentflow.compose import chain_workflows, merge_workflows, parallel_workflows
 from agentflow.events import Event, EventBus, EventType, MessageBox
 from agentflow.execution.async_executor import AsyncWorkflowExecutor
@@ -42,6 +43,13 @@ from agentflow.persistence import (
     serialize_context,
     serialize_result,
 )
+from agentflow.resilience import (
+    Bulkhead,
+    CircuitBreaker,
+    CircuitBreakerOpen,
+    CircuitState,
+    RateLimiter,
+)
 from agentflow.retry import (
     ConditionalRetry,
     ExponentialBackoff,
@@ -51,7 +59,16 @@ from agentflow.retry import (
     RetryStrategy,
     execute_with_retry,
 )
+from agentflow.spec import (
+    FunctionRegistry,
+    build_from_spec,
+    load_spec_json,
+    load_spec_yaml,
+    spec_from_builder,
+    validate_spec,
+)
 from agentflow.trace import workflow_to_dict, workflow_to_json, workflow_to_text
+from agentflow.visualize import to_ascii, to_dot, to_mermaid, to_summary
 from agentflow.types import (
     Edge,
     EdgeType,
@@ -70,8 +87,14 @@ __all__ = [
     "AggregatorNode",
     "AsyncWorkflowExecutor",
     "BaseNode",
+    "build_from_spec",
+    "Bulkhead",
     "chain_of_thought",
     "chain_workflows",
+    "CircuitBreaker",
+    "CircuitBreakerOpen",
+    "CircuitState",
+    "compute_cache_key",
     "compute_node_stats",
     "compute_parallelism",
     "ConditionalNode",
@@ -93,6 +116,7 @@ __all__ = [
     "find_bottlenecks",
     "find_critical_path",
     "FixedDelay",
+    "FunctionRegistry",
     "GateNode",
     "guarded_pipeline",
     "impact_analysis",
@@ -100,10 +124,13 @@ __all__ = [
     "LLMNode",
     "load_context",
     "load_result",
+    "load_spec_json",
+    "load_spec_yaml",
     "LoopNode",
     "map_reduce",
     "merge_workflows",
     "MessageBox",
+    "NodeCache",
     "NodeOutput",
     "NodeRegistry",
     "NodeResult",
@@ -111,17 +138,24 @@ __all__ = [
     "NodeStatus",
     "parallel_workflows",
     "pipeline",
+    "RateLimiter",
     "RetryStrategy",
     "save_context",
     "save_result",
     "serialize_context",
     "serialize_result",
     "SharedContext",
+    "spec_from_builder",
     "SubworkflowNode",
     "supervisor_loop",
     "SupervisorNode",
+    "to_ascii",
+    "to_dot",
+    "to_mermaid",
+    "to_summary",
     "ToolNode",
     "TransformNode",
+    "validate_spec",
     "voting_ensemble",
     "WorkflowBuilder",
     "WorkflowConfig",

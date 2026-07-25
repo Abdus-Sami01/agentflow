@@ -31,6 +31,7 @@ class WorkflowBuilder:
         self._workflow_id = workflow_id
         self._config = WorkflowConfig()
         self._hooks = WorkflowHooks()
+        self._cache: Any = None
 
     def llm(
         self,
@@ -157,11 +158,15 @@ class WorkflowBuilder:
         self._hooks = hooks
         return self
 
+    def with_cache(self, cache: Any) -> WorkflowBuilder:
+        self._cache = cache
+        return self
+
     def build(self) -> WorkflowExecutor:
         errors = self._dag.validate()
         if errors:
             raise ValueError(f"invalid workflow: {'; '.join(errors)}")
-        return WorkflowExecutor(self._dag, self._nodes, self._config, self._hooks)
+        return WorkflowExecutor(self._dag, self._nodes, self._config, self._hooks, self._cache)
 
     def run(self, initial_data: dict[str, Any] | None = None) -> WorkflowResult:
         executor = self.build()
