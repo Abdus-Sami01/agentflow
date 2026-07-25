@@ -12,6 +12,25 @@ from agentflow.nodes.supervisor import SupervisorNode
 from agentflow.nodes.subworkflow import SubworkflowNode
 from agentflow.nodes.gate import GateNode
 from agentflow.nodes.loop import LoopNode
+from agentflow.analysis import (
+    compute_node_stats,
+    compute_parallelism,
+    deadlock_check,
+    dependency_matrix,
+    find_bottlenecks,
+    find_critical_path,
+    impact_analysis,
+)
+from agentflow.persistence import (
+    deserialize_context,
+    deserialize_result,
+    load_context,
+    load_result,
+    save_context,
+    save_result,
+    serialize_context,
+    serialize_result,
+)
 from agentflow.trace import workflow_to_dict, workflow_to_json, workflow_to_text
 from agentflow.types import (
     Edge,
@@ -29,6 +48,22 @@ from agentflow.types import (
 
 __all__ = [
     "AggregatorNode",
+    "AsyncWorkflowExecutor",
+    "compute_node_stats",
+    "compute_parallelism",
+    "deadlock_check",
+    "dependency_matrix",
+    "deserialize_context",
+    "deserialize_result",
+    "find_bottlenecks",
+    "find_critical_path",
+    "impact_analysis",
+    "load_context",
+    "load_result",
+    "save_context",
+    "save_result",
+    "serialize_context",
+    "serialize_result",
     "AsyncWorkflowExecutor",
     "BaseNode",
     "ConditionalNode",
