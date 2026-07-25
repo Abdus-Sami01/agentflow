@@ -24,6 +24,8 @@ class GateNode(BaseNode):
         except Exception as e:
             return NodeOutput(error=f"gate check error: {e}")
 
-        if passed:
-            return NodeOutput(data=inputs, metadata={"gate": "passed"})
-        return NodeOutput(error=self._fail_message, metadata={"gate": "blocked"})
+        if not passed:
+            return NodeOutput(error=self._fail_message, metadata={"gate": "blocked"})
+
+        passthrough = next(iter(inputs.values())) if len(inputs) == 1 else inputs
+        return NodeOutput(data=passthrough, metadata={"gate": "passed"})
