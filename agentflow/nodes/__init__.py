@@ -13,8 +13,10 @@ from agentflow.nodes.router import RouterNode
 from agentflow.nodes.http import HTTPNode, SSRFBlocked, check_url_safety
 from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWriteNode
 from agentflow.nodes.agent import AgentNode
+from agentflow.nodes.batch import BatchNode
 
 NodeRegistry.register("agent", AgentNode)
+NodeRegistry.register("batch", BatchNode)
 NodeRegistry.register("foreach", ForEachNode)
 NodeRegistry.register("router", RouterNode)
 NodeRegistry.register("http", HTTPNode)
@@ -52,4 +54,5 @@ __all__ = [
     "MemoryWriteNode",
     "MemoryAppendNode",
     "AgentNode",
+    "BatchNode",
 ]

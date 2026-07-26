@@ -26,7 +26,16 @@ from agentflow.graph_algos import (
     shortest_path,
     transitive_reduction,
 )
+from agentflow.deadletter import DeadLetter, DeadLetterQueue, collect_failures
+from agentflow.guards import (
+    BulkheadNode,
+    CircuitBreakerNode,
+    RateLimitedNode,
+    protect,
+    protect_all,
+)
 from agentflow.nodes.agent import AgentNode
+from agentflow.nodes.batch import BatchNode
 from agentflow.nodes.conditional import ConditionalNode
 from agentflow.nodes.foreach import ForEachNode
 from agentflow.nodes.gate import GateNode
@@ -116,20 +125,26 @@ __all__ = [
     "articulation_nodes",
     "AsyncWorkflowExecutor",
     "BaseNode",
+    "BatchNode",
     "betweenness_centrality",
     "build_from_spec",
     "Bulkhead",
+    "BulkheadNode",
     "chain_of_thought",
     "chain_workflows",
     "CircuitBreaker",
+    "CircuitBreakerNode",
     "CircuitBreakerOpen",
     "CircuitState",
+    "collect_failures",
     "compute_cache_key",
     "compute_node_stats",
     "compute_parallelism",
     "ConditionalNode",
     "ConditionalRetry",
     "DAG",
+    "DeadLetter",
+    "DeadLetterQueue",
     "deadlock_check",
     "dependency_matrix",
     "deserialize_context",
@@ -183,6 +198,9 @@ __all__ = [
     "NodeStatus",
     "parallel_workflows",
     "pipeline",
+    "protect",
+    "protect_all",
+    "RateLimitedNode",
     "RateLimiter",
     "RedactionMiddleware",
     "RetryStrategy",

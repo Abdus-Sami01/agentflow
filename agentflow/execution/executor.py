@@ -170,6 +170,7 @@ class WorkflowExecutor:
 
         strategy = self._config.retry_strategy
         last_error = ""
+        last_output: NodeOutput | None = None
         elapsed = 0.0
         attempt = -1
 
@@ -211,6 +212,7 @@ class WorkflowExecutor:
                     return result
 
                 last_error = output.error
+                last_output = output
 
             except FuturesTimeout:
                 last_error = f"node {node_name!r} timed out after {timeout}s"
@@ -222,6 +224,7 @@ class WorkflowExecutor:
         result = NodeResult(
             node_name=node_name,
             status=NodeStatus.FAILED,
+            output=last_output,
             error=last_error,
             attempts=max(attempt, 1),
             elapsed_ms=elapsed,

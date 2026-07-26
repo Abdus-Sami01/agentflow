@@ -17,6 +17,8 @@ from agentflow.nodes.router import RouterNode
 from agentflow.nodes.http import HTTPNode
 from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWriteNode
 from agentflow.nodes.agent import AgentNode
+from agentflow.nodes.batch import BatchNode
+from agentflow.nodes.subworkflow import SubworkflowNode
 from agentflow.execution.executor import WorkflowExecutor
 from agentflow.types import (
     Edge,
@@ -190,6 +192,29 @@ class WorkflowBuilder:
     ) -> WorkflowBuilder:
         self._dag.add_node(NodeSpec(name=name, node_type="agent", priority=priority))
         self._nodes[name] = AgentNode(name, propose_fn, verify_fn, execute_fn, max_attempts)
+        return self
+
+    def batch(
+        self,
+        name: str,
+        batch_fn: Callable[[list[Any], SharedContext], Any],
+        batch_size: int = 10,
+        flatten: bool = True,
+        stop_on_error: bool = False,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="batch"))
+        self._nodes[name] = BatchNode(name, batch_fn, batch_size, flatten, stop_on_error)
+        return self
+
+    def subworkflow(
+        self,
+        name: str,
+        workflow_factory: Callable[[dict[str, Any], SharedContext], Any],
+        inherit_memory: bool = False,
+        max_depth: int = 5,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="subworkflow"))
+        self._nodes[name] = SubworkflowNode(name, workflow_factory, inherit_memory, max_depth)
         return self
 
     def priority(self, name: str, value: int) -> WorkflowBuilder:

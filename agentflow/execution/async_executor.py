@@ -4,6 +4,7 @@ import asyncio
 import time
 from typing import Any
 
+from agentflow.cache import NodeCache, compute_cache_key
 from agentflow.graph import DAG
 from agentflow.nodes.base import BaseNode
 from agentflow.types import (
@@ -26,13 +27,22 @@ class AsyncWorkflowExecutor:
         nodes: dict[str, BaseNode] | None = None,
         config: WorkflowConfig | None = None,
         hooks: WorkflowHooks | None = None,
+        cache: NodeCache | None = None,
     ):
         self._dag = dag
         self._nodes = nodes or {}
         self._config = config or WorkflowConfig()
         self._hooks = hooks or WorkflowHooks()
+        self._cache = cache
 
-    async def run(self, context: SharedContext | None = None) -> WorkflowResult:
+    async def resume(self, context: SharedContext) -> WorkflowResult:
+        completed = {
+            name for name, nr in context.results.items()
+            if nr.status == NodeStatus.COMPLETED
+        }
+        return await self.run(context, skip_nodes=completed)
+
+    async def run(self, context: SharedContext | None = None, skip_nodes: set[str] | None = None) -> WorkflowResult:
         errors = self._dag.validate()
         if errors:
             return WorkflowResult(
@@ -47,12 +57,25 @@ class AsyncWorkflowExecutor:
         if self._hooks.on_workflow_start:
             self._hooks.on_workflow_start(context)
 
-        schedule = self._dag.parallel_schedule()
+        schedule = self._dag.parallel_schedule(by_priority=self._config.respect_priority)
         status_map: dict[str, NodeStatus] = {n: NodeStatus.PENDING for n in self._dag.nodes}
+        skip_nodes = skip_nodes or set()
+        deadline = start + self._config.workflow_timeout_s if self._config.workflow_timeout_s > 0 else 0
+
+        for name in skip_nodes:
+            if name in status_map:
+                status_map[name] = NodeStatus.COMPLETED
 
         for level in schedule:
-            runnable = [n for n in level if self._should_run(n, status_map, context)]
-            skipped = [n for n in level if n not in runnable]
+            if deadline and time.perf_counter() >= deadline:
+                return self._build_result(
+                    context, start, WorkflowStatus.FAILED,
+                    f"workflow exceeded {self._config.workflow_timeout_s}s budget",
+                )
+
+            pending = [n for n in level if n not in skip_nodes]
+            runnable = [n for n in pending if self._should_run(n, status_map, context)]
+            skipped = [n for n in pending if n not in runnable]
 
             for node_name in skipped:
                 status_map[node_name] = NodeStatus.SKIPPED
@@ -112,10 +135,41 @@ class AsyncWorkflowExecutor:
             self._hooks.on_node_start(node_name, context)
 
         inputs = self._gather_inputs(node_name, context)
-        last_error = ""
-        elapsed = 0.0
 
-        for attempt in range(max_retries + 1):
+        cache_key = ""
+        if self._cache is not None:
+            cache_key = compute_cache_key(node_name, inputs)
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                result = NodeResult(
+                    node_name=node_name,
+                    status=NodeStatus.COMPLETED,
+                    output=cached,
+                    attempts=0,
+                    elapsed_ms=0,
+                )
+                if self._hooks.on_node_complete:
+                    self._hooks.on_node_complete(node_name, result, context)
+                return result
+
+        strategy = self._config.retry_strategy
+        last_error = ""
+        last_output: NodeOutput | None = None
+        elapsed = 0.0
+        attempt = -1
+
+        while True:
+            attempt += 1
+            if attempt > 0:
+                if strategy is not None:
+                    if not strategy.should_retry(attempt - 1, last_error):
+                        break
+                    delay = strategy.delay(attempt - 1)
+                    if delay > 0:
+                        await asyncio.sleep(delay)
+                elif attempt > max_retries:
+                    break
+
             start = time.perf_counter()
             try:
                 if timeout > 0:
@@ -129,6 +183,8 @@ class AsyncWorkflowExecutor:
                 elapsed = (time.perf_counter() - start) * 1000
 
                 if output.success:
+                    if self._cache is not None and cache_key:
+                        self._cache.put(cache_key, output)
                     result = NodeResult(
                         node_name=node_name,
                         status=NodeStatus.COMPLETED,
@@ -141,6 +197,7 @@ class AsyncWorkflowExecutor:
                     return result
 
                 last_error = output.error
+                last_output = output
 
             except asyncio.TimeoutError:
                 last_error = f"node {node_name!r} timed out after {timeout}s"
@@ -152,8 +209,9 @@ class AsyncWorkflowExecutor:
         result = NodeResult(
             node_name=node_name,
             status=NodeStatus.FAILED,
+            output=last_output,
             error=last_error,
-            attempts=max_retries + 1,
+            attempts=max(attempt, 1),
             elapsed_ms=elapsed,
         )
         if self._hooks.on_node_error:
