@@ -6,8 +6,10 @@ from typing import Any
 from agentflow.types import NodeResult, NodeStatus, WorkflowResult, WorkflowStatus
 
 
-def workflow_to_dict(result: WorkflowResult) -> dict[str, Any]:
-    return {
+def workflow_to_dict(result: WorkflowResult, dag: Any = None) -> dict[str, Any]:
+    """Serialize a run. Pass the DAG to include dependency edges, which lets
+    downstream tooling compute a real critical path instead of guessing."""
+    payload = {
         "workflow_id": result.workflow_id,
         "status": result.status.value,
         "total_ms": round(result.total_ms, 1),
@@ -21,6 +23,16 @@ def workflow_to_dict(result: WorkflowResult) -> dict[str, Any]:
             for name, nr in result.results.items()
         },
     }
+    if dag is not None:
+        payload["edges"] = [
+            {"source": e.source, "target": e.target}
+            for e in getattr(dag, "edges", [])
+        ]
+        for name, node in payload["nodes"].items():
+            spec = getattr(dag, "nodes", {}).get(name)
+            if spec is not None and getattr(spec, "node_type", ""):
+                node["node_type"] = spec.node_type
+    return payload
 
 
 def workflow_to_json(result: WorkflowResult, indent: int = 2) -> str:
