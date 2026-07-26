@@ -16,6 +16,17 @@ from agentflow.execution.executor import WorkflowExecutor
 from agentflow.graph import DAG
 from agentflow.nodes.aggregator import AggregatorNode
 from agentflow.nodes.base import BaseNode, NodeRegistry
+from agentflow.graph_algos import (
+    all_paths,
+    articulation_nodes,
+    betweenness_centrality,
+    graph_density,
+    level_of,
+    longest_chain,
+    shortest_path,
+    transitive_reduction,
+)
+from agentflow.nodes.agent import AgentNode
 from agentflow.nodes.conditional import ConditionalNode
 from agentflow.nodes.foreach import ForEachNode
 from agentflow.nodes.gate import GateNode
@@ -99,9 +110,13 @@ from agentflow.types import (
 )
 
 __all__ = [
+    "AgentNode",
     "AggregatorNode",
+    "all_paths",
+    "articulation_nodes",
     "AsyncWorkflowExecutor",
     "BaseNode",
+    "betweenness_centrality",
     "build_from_spec",
     "Bulkhead",
     "chain_of_thought",
@@ -135,10 +150,12 @@ __all__ = [
     "ForEachNode",
     "FunctionRegistry",
     "GateNode",
+    "graph_density",
     "guarded_pipeline",
     "Histogram",
     "HTTPNode",
     "impact_analysis",
+    "level_of",
     "LinearBackoff",
     "LLMNode",
     "load_context",
@@ -146,6 +163,7 @@ __all__ = [
     "load_spec_json",
     "load_spec_yaml",
     "LoggingMiddleware",
+    "longest_chain",
     "LoopNode",
     "map_reduce",
     "MemoryAppendNode",
@@ -174,6 +192,7 @@ __all__ = [
     "serialize_context",
     "serialize_result",
     "SharedContext",
+    "shortest_path",
     "spec_from_builder",
     "SSRFBlocked",
     "StreamEvent",
@@ -188,6 +207,7 @@ __all__ = [
     "to_summary",
     "ToolNode",
     "TransformNode",
+    "transitive_reduction",
     "ValidationMiddleware",
     "validate_spec",
     "voting_ensemble",

@@ -133,3 +133,6 @@ class WorkflowConfig:
     fail_fast: bool = False
     default_timeout_s: float = 60.0
     default_retries: int = 0
+    workflow_timeout_s: float = 0
+    retry_strategy: Any = None
+    respect_priority: bool = True

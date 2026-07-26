@@ -16,6 +16,7 @@ from agentflow.nodes.foreach import ForEachNode
 from agentflow.nodes.router import RouterNode
 from agentflow.nodes.http import HTTPNode
 from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWriteNode
+from agentflow.nodes.agent import AgentNode
 from agentflow.execution.executor import WorkflowExecutor
 from agentflow.types import (
     Edge,
@@ -178,6 +179,26 @@ class WorkflowBuilder:
         self._nodes[name] = MemoryAppendNode(name, key, max_len)
         return self
 
+    def agent(
+        self,
+        name: str,
+        propose_fn: Callable[[dict[str, Any], SharedContext, list[str]], Any],
+        verify_fn: Callable[[Any, SharedContext], tuple[bool, str]],
+        execute_fn: Callable[[Any, SharedContext], Any] | None = None,
+        max_attempts: int = 3,
+        priority: int = 0,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="agent", priority=priority))
+        self._nodes[name] = AgentNode(name, propose_fn, verify_fn, execute_fn, max_attempts)
+        return self
+
+    def priority(self, name: str, value: int) -> WorkflowBuilder:
+        spec = self._dag.nodes.get(name)
+        if spec is None:
+            raise ValueError(f"node {name!r} not found")
+        self._dag._nodes[name].priority = value
+        return self
+
     def node(self, name: str, node: BaseNode, node_type: str = "custom", **spec_kwargs) -> WorkflowBuilder:
         self._dag.add_node(NodeSpec(name=name, node_type=node_type, **spec_kwargs))
         self._nodes[name] = node
@@ -210,12 +231,18 @@ class WorkflowBuilder:
         fail_fast: bool = False,
         default_timeout: float = 60.0,
         default_retries: int = 0,
+        workflow_timeout: float = 0,
+        retry_strategy: Any = None,
+        respect_priority: bool = True,
     ) -> WorkflowBuilder:
         self._config = WorkflowConfig(
             max_parallel=max_parallel,
             fail_fast=fail_fast,
             default_timeout_s=default_timeout,
             default_retries=default_retries,
+            workflow_timeout_s=workflow_timeout,
+            retry_strategy=retry_strategy,
+            respect_priority=respect_priority,
         )
         return self
 

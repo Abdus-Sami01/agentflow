@@ -57,15 +57,22 @@ class WorkflowExecutor:
         if self._hooks.on_workflow_start:
             self._hooks.on_workflow_start(context)
 
-        schedule = self._dag.parallel_schedule()
+        schedule = self._dag.parallel_schedule(by_priority=self._config.respect_priority)
         status_map: dict[str, NodeStatus] = {n: NodeStatus.PENDING for n in self._dag.nodes}
         skip_nodes = skip_nodes or set()
+        deadline = start + self._config.workflow_timeout_s if self._config.workflow_timeout_s > 0 else 0
 
         for name in skip_nodes:
             if name in status_map:
                 status_map[name] = NodeStatus.COMPLETED
 
         for level in schedule:
+            if deadline and time.perf_counter() >= deadline:
+                return self._build_result(
+                    context, start, WorkflowStatus.FAILED,
+                    f"workflow exceeded {self._config.workflow_timeout_s}s budget",
+                )
+
             pending = [n for n in level if n not in skip_nodes]
             runnable = [n for n in pending if self._should_run(n, status_map, context)]
             skipped = [n for n in pending if n not in runnable]
@@ -161,8 +168,23 @@ class WorkflowExecutor:
                     self._hooks.on_node_complete(node_name, result, context)
                 return result
 
+        strategy = self._config.retry_strategy
         last_error = ""
-        for attempt in range(max_retries + 1):
+        elapsed = 0.0
+        attempt = -1
+
+        while True:
+            attempt += 1
+            if attempt > 0:
+                if strategy is not None:
+                    if not strategy.should_retry(attempt - 1, last_error):
+                        break
+                    delay = strategy.delay(attempt - 1)
+                    if delay > 0:
+                        time.sleep(delay)
+                elif attempt > max_retries:
+                    break
+
             start = time.perf_counter()
             try:
                 if timeout > 0:
@@ -201,7 +223,7 @@ class WorkflowExecutor:
             node_name=node_name,
             status=NodeStatus.FAILED,
             error=last_error,
-            attempts=max_retries + 1,
+            attempts=max(attempt, 1),
             elapsed_ms=elapsed,
         )
         if self._hooks.on_node_error:

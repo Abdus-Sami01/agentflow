@@ -121,7 +121,7 @@ class DAG:
 
         return order
 
-    def parallel_schedule(self) -> list[list[str]]:
+    def parallel_schedule(self, by_priority: bool = False) -> list[list[str]]:
         cycle = self.detect_cycle()
         if cycle:
             raise ValueError(f"cycle detected: {' -> '.join(cycle)}")
@@ -130,8 +130,10 @@ class DAG:
         for edge in self._edges:
             in_deg[edge.target] += 1
 
+        order = self._order_nodes if by_priority else sorted
+
         levels: list[list[str]] = []
-        current = sorted(n for n, d in in_deg.items() if d == 0)
+        current = order([n for n, d in in_deg.items() if d == 0])
 
         while current:
             levels.append(current)
@@ -141,9 +143,12 @@ class DAG:
                     in_deg[edge.target] -= 1
                     if in_deg[edge.target] == 0:
                         next_level.append(edge.target)
-            current = sorted(next_level)
+            current = order(next_level)
 
         return levels
+
+    def _order_nodes(self, names: list[str]) -> list[str]:
+        return sorted(names, key=lambda n: (-self._nodes[n].priority, n))
 
     def get_dependencies(self, node_name: str) -> set[str]:
         deps = set()
