@@ -14,6 +14,14 @@ NODE_SHAPES = {
     "gate": ("{{", "}}"),
     "loop": ("[/", "\\]"),
     "subworkflow": ("[[", "]]"),
+    "foreach": ("[/", "\\]"),
+    "batch": ("[/", "\\]"),
+    "router": ("{", "}"),
+    "http": ("[(", ")]"),
+    "agent": ("([", "])"),
+    "memory_read": ("[(", ")]"),
+    "memory_write": ("[(", ")]"),
+    "memory_append": ("[(", ")]"),
 }
 
 STATUS_COLORS = {

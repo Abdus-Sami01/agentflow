@@ -32,10 +32,30 @@ class FunctionRegistry:
 
 
 SPEC_REQUIRED_NODE_KEYS = {"name", "type"}
-SPEC_ALLOWED_NODE_TYPES = {
-    "llm", "tool", "transform", "conditional",
-    "aggregator", "supervisor", "gate", "loop",
+
+SPEC_TYPE_REQUIREMENTS: dict[str, set[str]] = {
+    "llm": {"llm_fn"},
+    "tool": {"fn"},
+    "transform": {"fn"},
+    "conditional": {"condition"},
+    "aggregator": set(),
+    "supervisor": {"evaluate_fn"},
+    "gate": {"check_fn"},
+    "loop": {"body_fn", "condition_fn"},
+    "foreach": {"item_fn"},
+    "router": {"routes"},
+    "http": set(),
+    "memory_read": {"key"},
+    "memory_write": {"key"},
+    "memory_append": {"key"},
+    "agent": {"propose_fn", "verify_fn"},
+    "batch": {"batch_fn"},
+    "subworkflow": {"workflow_factory"},
 }
+
+SPEC_ALLOWED_NODE_TYPES = set(SPEC_TYPE_REQUIREMENTS)
+
+SPEC_FORBIDDEN_KEYS = {"allow_private"}
 
 
 def validate_spec(spec: dict[str, Any]) -> list[str]:
@@ -69,6 +89,18 @@ def validate_spec(spec: dict[str, Any]) -> list[str]:
 
         if node_type not in SPEC_ALLOWED_NODE_TYPES:
             errors.append(f"node {name!r} has unsupported type {node_type!r}. Allowed: {sorted(SPEC_ALLOWED_NODE_TYPES)}")
+            continue
+
+        missing_fields = SPEC_TYPE_REQUIREMENTS[node_type] - set(node.keys())
+        if missing_fields:
+            errors.append(f"node {name!r} of type {node_type!r} missing required: {sorted(missing_fields)}")
+
+        forbidden = SPEC_FORBIDDEN_KEYS & set(node.keys())
+        if forbidden:
+            errors.append(f"node {name!r} sets forbidden key(s) {sorted(forbidden)}; not permitted from a spec file")
+
+        if node_type == "router" and not isinstance(node.get("routes"), dict):
+            errors.append(f"node {name!r} 'routes' must be a mapping of route name to predicate name")
 
     for i, edge in enumerate(spec.get("edges", [])):
         if not isinstance(edge, dict):
@@ -108,6 +140,8 @@ def build_from_spec(spec: dict[str, Any], registry: FunctionRegistry) -> Workflo
 
     for node in spec["nodes"]:
         _add_node_from_spec(wb, node, registry)
+        if node.get("priority"):
+            wb.priority(node["name"], node["priority"])
 
     for edge in spec.get("edges", []):
         condition_name = edge.get("condition")
@@ -159,6 +193,64 @@ def _add_node_from_spec(wb: WorkflowBuilder, node: dict[str, Any], registry: Fun
             registry.resolve(node["body_fn"]),
             registry.resolve(node["condition_fn"]),
             max_iterations=node.get("max_iterations", 10),
+        )
+    elif node_type == "foreach":
+        wb.foreach(
+            name,
+            registry.resolve(node["item_fn"]),
+            max_parallel=node.get("max_parallel", 4),
+            max_items=node.get("max_items", 1000),
+            fail_fast=node.get("fail_fast", False),
+            item_timeout=node.get("item_timeout", 0),
+        )
+    elif node_type == "router":
+        wb.router(
+            name,
+            routes={k: registry.resolve(v) for k, v in node["routes"].items()},
+            default_route=node.get("default_route", ""),
+            match_all=node.get("match_all", False),
+        )
+    elif node_type == "http":
+        wb.http(
+            name,
+            url=node.get("url", ""),
+            method=node.get("method", "GET"),
+            headers=node.get("headers"),
+            timeout=node.get("timeout", 10.0),
+            parse_json=node.get("parse_json", True),
+            url_fn=registry.resolve(node["url_fn"]) if node.get("url_fn") else None,
+            retry=retry,
+        )
+    elif node_type == "memory_read":
+        wb.memory_read(name, node["key"], default=node.get("default"), required=node.get("required", False))
+    elif node_type == "memory_write":
+        value_fn = registry.resolve(node["value_fn"]) if node.get("value_fn") else None
+        wb.memory_write(name, node["key"], value_fn=value_fn)
+    elif node_type == "memory_append":
+        wb.memory_append(name, node["key"], max_len=node.get("max_len", 1000))
+    elif node_type == "agent":
+        wb.agent(
+            name,
+            registry.resolve(node["propose_fn"]),
+            registry.resolve(node["verify_fn"]),
+            execute_fn=registry.resolve(node["execute_fn"]) if node.get("execute_fn") else None,
+            max_attempts=node.get("max_attempts", 3),
+            priority=node.get("priority", 0),
+        )
+    elif node_type == "batch":
+        wb.batch(
+            name,
+            registry.resolve(node["batch_fn"]),
+            batch_size=node.get("batch_size", 10),
+            flatten=node.get("flatten", True),
+            stop_on_error=node.get("stop_on_error", False),
+        )
+    elif node_type == "subworkflow":
+        wb.subworkflow(
+            name,
+            registry.resolve(node["workflow_factory"]),
+            inherit_memory=node.get("inherit_memory", False),
+            max_depth=node.get("max_depth", 5),
         )
 
 

@@ -11,6 +11,39 @@ from agentflow.trace import workflow_to_json, workflow_to_text
 from agentflow.visualize import to_ascii, to_dot, to_mermaid, to_summary
 
 
+STUBBED_FN_KEYS = (
+    "fn", "llm_fn", "condition", "merge_fn", "evaluate_fn", "check_fn",
+    "body_fn", "condition_fn", "item_fn", "batch_fn", "value_fn",
+    "url_fn", "propose_fn", "verify_fn", "execute_fn", "workflow_factory",
+)
+
+
+def _stub_registry(spec: dict[str, Any]) -> FunctionRegistry:
+    registry = FunctionRegistry()
+
+    def add(fn_name: Any) -> None:
+        if isinstance(fn_name, str) and fn_name and not registry.has(fn_name):
+            registry.register(fn_name, lambda *a, **k: None)
+
+    for node in spec.get("nodes", []):
+        if not isinstance(node, dict):
+            continue
+        for key in STUBBED_FN_KEYS:
+            add(node.get(key))
+        routes = node.get("routes")
+        if isinstance(routes, dict):
+            for route_fn in routes.values():
+                add(route_fn)
+
+    for edge in spec.get("edges", []):
+        if isinstance(edge, dict):
+            cond = edge.get("condition")
+            if isinstance(cond, str) and cond and not registry.has(cond):
+                registry.register(cond, lambda *a, **k: True)
+
+    return registry
+
+
 def _load_spec(path: str) -> dict[str, Any]:
     if path.endswith((".yaml", ".yml")):
         return load_spec_yaml(path)
@@ -42,16 +75,7 @@ def cmd_visualize(args) -> int:
             print(f"  - {e}", file=sys.stderr)
         return 1
 
-    registry = FunctionRegistry()
-    for node in spec.get("nodes", []):
-        for key in ("fn", "llm_fn", "condition", "merge_fn", "evaluate_fn", "check_fn", "body_fn", "condition_fn"):
-            fn_name = node.get(key)
-            if fn_name and not registry.has(fn_name):
-                registry.register(fn_name, lambda *a, **k: None)
-    for edge in spec.get("edges", []):
-        cond = edge.get("condition")
-        if cond and not registry.has(cond):
-            registry.register(cond, lambda *a, **k: True)
+    registry = _stub_registry(spec)
 
     wb = build_from_spec(spec, registry)
     dag = wb.dag
@@ -77,16 +101,7 @@ def cmd_inspect(args) -> int:
             print(f"  - {e}", file=sys.stderr)
         return 1
 
-    registry = FunctionRegistry()
-    for node in spec.get("nodes", []):
-        for key in ("fn", "llm_fn", "condition", "merge_fn", "evaluate_fn", "check_fn", "body_fn", "condition_fn"):
-            fn_name = node.get(key)
-            if fn_name and not registry.has(fn_name):
-                registry.register(fn_name, lambda *a, **k: None)
-    for edge in spec.get("edges", []):
-        cond = edge.get("condition")
-        if cond and not registry.has(cond):
-            registry.register(cond, lambda *a, **k: True)
+    registry = _stub_registry(spec)
 
     wb = build_from_spec(spec, registry)
     dag = wb.dag
