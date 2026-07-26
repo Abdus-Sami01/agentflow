@@ -27,6 +27,28 @@ from agentflow.graph_algos import (
     transitive_reduction,
 )
 from agentflow.deadletter import DeadLetter, DeadLetterQueue, collect_failures
+from agentflow.diff import RunDiff, WorkflowDiff, diff_dags, diff_runs
+from agentflow.execution.scheduler import DependencyScheduler
+from agentflow.optimize import (
+    FusedNode,
+    OptimizationReport,
+    find_fusable_chains,
+    optimize,
+)
+from agentflow.profiling import NodeProfile, Profiler
+from agentflow.replay import (
+    Recording,
+    ReplayNode,
+    compare_outputs,
+    replay_nodes,
+)
+from agentflow.simulate import (
+    SimulationResult,
+    durations_from_result,
+    recommend_parallelism,
+    simulate,
+    what_if,
+)
 from agentflow.guards import (
     BulkheadNode,
     CircuitBreakerNode,
@@ -142,10 +164,30 @@ __all__ = [
     "compute_parallelism",
     "ConditionalNode",
     "ConditionalRetry",
+    "compare_outputs",
     "DAG",
     "DeadLetter",
     "DeadLetterQueue",
     "deadlock_check",
+    "DependencyScheduler",
+    "diff_dags",
+    "diff_runs",
+    "durations_from_result",
+    "find_fusable_chains",
+    "FusedNode",
+    "NodeProfile",
+    "optimize",
+    "OptimizationReport",
+    "Profiler",
+    "recommend_parallelism",
+    "Recording",
+    "ReplayNode",
+    "replay_nodes",
+    "RunDiff",
+    "simulate",
+    "SimulationResult",
+    "what_if",
+    "WorkflowDiff",
     "dependency_matrix",
     "deserialize_context",
     "deserialize_result",
