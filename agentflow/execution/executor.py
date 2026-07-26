@@ -42,6 +42,10 @@ class WorkflowExecutor:
         }
         return self.run(context, skip_nodes=completed)
 
+    def _offset_ms(self, moment: float) -> float:
+        """Milliseconds from workflow start, so traces show real concurrency."""
+        return (moment - getattr(self, "_t0", moment)) * 1000
+
     def run(self, context: SharedContext | None = None, skip_nodes: set[str] | None = None) -> WorkflowResult:
         errors = self._dag.validate()
         if errors:
@@ -53,6 +57,7 @@ class WorkflowExecutor:
 
         context = context or SharedContext()
         start = time.perf_counter()
+        self._t0 = start
 
         if self._hooks.on_workflow_start:
             self._hooks.on_workflow_start(context)
@@ -206,6 +211,8 @@ class WorkflowExecutor:
                         output=output,
                         attempts=attempt + 1,
                         elapsed_ms=elapsed,
+                        started_ms=self._offset_ms(start),
+                        ended_ms=self._offset_ms(start) + elapsed,
                     )
                     if self._hooks.on_node_complete:
                         self._hooks.on_node_complete(node_name, result, context)
@@ -228,6 +235,8 @@ class WorkflowExecutor:
             error=last_error,
             attempts=max(attempt, 1),
             elapsed_ms=elapsed,
+            started_ms=self._offset_ms(start),
+            ended_ms=self._offset_ms(start) + elapsed,
         )
         if self._hooks.on_node_error:
             self._hooks.on_node_error(node_name, last_error, context)

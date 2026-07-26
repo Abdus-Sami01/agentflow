@@ -58,6 +58,8 @@ def _node_result_to_dict(nr: NodeResult) -> dict[str, Any]:
         "status": nr.status.value,
         "attempts": nr.attempts,
         "elapsed_ms": round(nr.elapsed_ms, 1),
+        "started_ms": round(nr.started_ms, 1),
+        "ended_ms": round(nr.ended_ms, 1),
     }
     if nr.error:
         d["error"] = nr.error

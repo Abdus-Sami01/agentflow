@@ -70,6 +70,8 @@ class NodeResult:
     attempts: int = 1
     elapsed_ms: float = 0
     error: str = ""
+    started_ms: float = 0.0
+    ended_ms: float = 0.0
 
 
 @dataclass
