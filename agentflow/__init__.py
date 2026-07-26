@@ -26,7 +26,25 @@ from agentflow.graph_algos import (
     shortest_path,
     transitive_reduction,
 )
+from agentflow.autotune import AutoTuner, TuningPlan
+from agentflow.cost import (
+    BudgetExceeded,
+    CostEntry,
+    CostTracker,
+    CostedNode,
+    estimate_token_cost,
+    with_cost,
+)
 from agentflow.deadletter import DeadLetter, DeadLetterQueue, collect_failures
+from agentflow.incremental import (
+    BuildCache,
+    IncrementalPlanner,
+    MemoizedNode,
+    apply_incremental,
+    fingerprint_value,
+    node_version,
+)
+from agentflow.timeline import simulated_timeline_text, timeline_html, timeline_text
 from agentflow.diff import RunDiff, WorkflowDiff, diff_dags, diff_runs
 from agentflow.execution.scheduler import DependencyScheduler
 from agentflow.optimize import (
@@ -144,6 +162,23 @@ __all__ = [
     "AgentNode",
     "AggregatorNode",
     "all_paths",
+    "apply_incremental",
+    "AutoTuner",
+    "BudgetExceeded",
+    "BuildCache",
+    "CostedNode",
+    "CostEntry",
+    "CostTracker",
+    "estimate_token_cost",
+    "fingerprint_value",
+    "IncrementalPlanner",
+    "MemoizedNode",
+    "node_version",
+    "simulated_timeline_text",
+    "timeline_html",
+    "timeline_text",
+    "TuningPlan",
+    "with_cost",
     "articulation_nodes",
     "AsyncWorkflowExecutor",
     "BaseNode",
