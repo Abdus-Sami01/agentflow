@@ -19,6 +19,8 @@ from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWrite
 from agentflow.nodes.agent import AgentNode
 from agentflow.nodes.batch import BatchNode
 from agentflow.nodes.subworkflow import SubworkflowNode
+from agentflow.nodes.parallel import ProcessPoolNode
+from agentflow.speculative import SpeculativeNode
 from agentflow.execution.executor import WorkflowExecutor
 from agentflow.types import (
     Edge,
@@ -204,6 +206,31 @@ class WorkflowBuilder:
     ) -> WorkflowBuilder:
         self._dag.add_node(NodeSpec(name=name, node_type="batch"))
         self._nodes[name] = BatchNode(name, batch_fn, batch_size, flatten, stop_on_error)
+        return self
+
+    def process_pool(
+        self,
+        name: str,
+        item_fn: Callable[[Any], Any],
+        max_workers: int = 4,
+        chunk_timeout: float = 0,
+        max_items: int = 10_000,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="process_pool"))
+        self._nodes[name] = ProcessPoolNode(name, item_fn, max_workers, chunk_timeout, max_items)
+        return self
+
+    def speculative(
+        self,
+        name: str,
+        select_fn: Callable[[dict[str, Any], SharedContext], str],
+        branches: dict[str, Callable[[dict[str, Any], SharedContext], Any]],
+        stats: Any = None,
+        max_parallel: int = 4,
+        speculate: bool = True,
+    ) -> WorkflowBuilder:
+        self._dag.add_node(NodeSpec(name=name, node_type="speculative"))
+        self._nodes[name] = SpeculativeNode(name, select_fn, branches, stats, max_parallel, speculate)
         return self
 
     def subworkflow(

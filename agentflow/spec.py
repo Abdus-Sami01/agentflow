@@ -51,6 +51,7 @@ SPEC_TYPE_REQUIREMENTS: dict[str, set[str]] = {
     "agent": {"propose_fn", "verify_fn"},
     "batch": {"batch_fn"},
     "subworkflow": {"workflow_factory"},
+    "process_pool": {"item_fn"},
 }
 
 SPEC_ALLOWED_NODE_TYPES = set(SPEC_TYPE_REQUIREMENTS)
@@ -244,6 +245,14 @@ def _add_node_from_spec(wb: WorkflowBuilder, node: dict[str, Any], registry: Fun
             batch_size=node.get("batch_size", 10),
             flatten=node.get("flatten", True),
             stop_on_error=node.get("stop_on_error", False),
+        )
+    elif node_type == "process_pool":
+        wb.process_pool(
+            name,
+            registry.resolve(node["item_fn"]),
+            max_workers=node.get("max_workers", 4),
+            chunk_timeout=node.get("chunk_timeout", 0),
+            max_items=node.get("max_items", 10_000),
         )
     elif node_type == "subworkflow":
         wb.subworkflow(

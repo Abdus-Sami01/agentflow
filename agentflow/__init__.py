@@ -27,6 +27,17 @@ from agentflow.graph_algos import (
     transitive_reduction,
 )
 from agentflow.autotune import AutoTuner, TuningPlan
+from agentflow.checkpoint import CheckpointMeta, Checkpointer, resume_or_start
+from agentflow.contracts import (
+    CompatibilityReport,
+    Contract,
+    ContractViolation,
+    ContractedNode,
+    apply_contracts,
+    check_compatibility,
+)
+from agentflow.nodes.parallel import ProcessPoolNode, is_picklable
+from agentflow.speculative import SpeculationStats, SpeculativeNode
 from agentflow.cost import (
     BudgetExceeded,
     CostEntry,
@@ -162,10 +173,23 @@ __all__ = [
     "AgentNode",
     "AggregatorNode",
     "all_paths",
+    "apply_contracts",
     "apply_incremental",
     "AutoTuner",
     "BudgetExceeded",
     "BuildCache",
+    "check_compatibility",
+    "CheckpointMeta",
+    "Checkpointer",
+    "CompatibilityReport",
+    "Contract",
+    "ContractedNode",
+    "ContractViolation",
+    "is_picklable",
+    "ProcessPoolNode",
+    "resume_or_start",
+    "SpeculationStats",
+    "SpeculativeNode",
     "CostedNode",
     "CostEntry",
     "CostTracker",

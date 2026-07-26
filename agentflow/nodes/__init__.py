@@ -14,9 +14,11 @@ from agentflow.nodes.http import HTTPNode, SSRFBlocked, check_url_safety
 from agentflow.nodes.memory import MemoryAppendNode, MemoryReadNode, MemoryWriteNode
 from agentflow.nodes.agent import AgentNode
 from agentflow.nodes.batch import BatchNode
+from agentflow.nodes.parallel import ProcessPoolNode, is_picklable
 
 NodeRegistry.register("agent", AgentNode)
 NodeRegistry.register("batch", BatchNode)
+NodeRegistry.register("process_pool", ProcessPoolNode)
 NodeRegistry.register("foreach", ForEachNode)
 NodeRegistry.register("router", RouterNode)
 NodeRegistry.register("http", HTTPNode)
@@ -55,4 +57,6 @@ __all__ = [
     "MemoryAppendNode",
     "AgentNode",
     "BatchNode",
+    "ProcessPoolNode",
+    "is_picklable",
 ]
